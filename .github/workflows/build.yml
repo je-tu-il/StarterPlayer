@@ -1,0 +1,39 @@
+name: Build unsigned IPA
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build app without signing
+        run: |
+          PROJECT_PATH=$(find . -name "*.xcodeproj" | head -n 1)
+          SCHEME=$(xcodebuild -project "$PROJECT_PATH" -list -json | jq -r '.project.schemes[0]')
+          xcodebuild clean build \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build_output \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package into IPA
+        run: |
+          mkdir -p Payload
+          cp -r build_output/Build/Products/Release-iphoneos/*.app Payload/
+          zip -r StealthRecorder.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: StealthRecorder-unsigned
+          path: StealthRecorder.ipa
