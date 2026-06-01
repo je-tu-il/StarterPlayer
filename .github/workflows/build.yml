@@ -30,10 +30,10 @@ jobs:
         run: |
           mkdir -p Payload
           cp -r build_output/Build/Products/Release-iphoneos/*.app Payload/
-          zip -r StealthRecorder.ipa Payload
+          zip -r fingerpick.ipa Payload
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: StealthRecorder-unsigned
-          path: StealthRecorder.ipa
+          name: fingerpick-unsigned
+          path: fingerpick.ipa
