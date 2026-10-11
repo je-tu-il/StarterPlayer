@@ -71,6 +71,29 @@ struct FingerPickerView: View {
                     }
                 }
                 
+                // Top Switcher to Voice Mode
+                HStack {
+                    Button {
+                        withAnimation(.spring()) {
+                            currentScreen = .voicePick
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "mic.fill")
+                            Text("Mode Vocal")
+                        }
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(.cyan)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Capsule().fill(.ultraThinMaterial))
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 50)
+                .frame(maxHeight: .infinity, alignment: .top)
+                
                 // Top Header / Countdown HUD
                 VStack(spacing: 12) {
                     topStatusPill
@@ -84,7 +107,7 @@ struct FingerPickerView: View {
                             .background(Capsule().fill(.ultraThinMaterial.opacity(0.3)))
                     }
                 }
-                .padding(.top, 54)
+                .padding(.top, 96)
                 .frame(maxHeight: .infinity, alignment: .top)
                 .allowsHitTesting(false)
                 

@@ -1,17 +1,23 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var currentScreen: AppScreen = .fingerPick
+    @State private var currentScreen: AppScreen = .voicePick
     @State private var players: [Player] = []
 
     var body: some View {
         ZStack {
             switch currentScreen {
-            case .fingerPick:
-                FingerPickerView(currentScreen: $currentScreen, gamePlayers: $players)
+            case .voicePick:
+                VoiceFirstPlayerView(currentScreen: $currentScreen, gamePlayers: $players)
                     .transition(.asymmetric(
                         insertion: .opacity.combined(with: .scale(scale: 0.96)),
                         removal: .opacity.combined(with: .scale(scale: 1.04))
+                    ))
+            case .fingerPick:
+                FingerPickerView(currentScreen: $currentScreen, gamePlayers: $players)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .leading).combined(with: .opacity),
+                        removal: .move(edge: .trailing).combined(with: .opacity)
                     ))
             case .gameSelection:
                 GameSelectionView(currentScreen: $currentScreen, players: $players)

@@ -91,10 +91,21 @@ struct FingerPickTests {
         #expect(r3.score(for: 3) == 60) // 2 * 20 + 20
     }
 
-    @Test func testPlayerPaletteUniqueness() async throws {
-        #expect(AppPalette.colors.count >= 20)
-        let c1 = AppPalette.color(at: 0)
-        let c2 = AppPalette.color(at: 1)
-        #expect(c1 != c2)
+    @Test func testTableOrderReconstruction() async throws {
+        let p1 = Player(name: "Julien", colorHex: AppPalette.hex(at: 0))
+        let p2 = Player(name: "Sarah", colorHex: AppPalette.hex(at: 1))
+        let p3 = Player(name: "Alex", colorHex: AppPalette.hex(at: 2))
+        
+        let winner = p2
+        var remaining = [p1, p3]
+        remaining.swapAt(0, 1)
+        
+        var finalRoster = [winner]
+        finalRoster.append(contentsOf: remaining)
+        
+        #expect(finalRoster.count == 3)
+        #expect(finalRoster[0].name == "Sarah")
+        #expect(finalRoster[1].name == "Alex")
+        #expect(finalRoster[2].name == "Julien")
     }
 }

@@ -73,7 +73,7 @@ struct GameSelectionView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         withAnimation(.spring()) {
-                            currentScreen = .fingerPick
+                            currentScreen = .voicePick
                         }
                     } label: {
                         HStack(spacing: 4) {

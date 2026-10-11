@@ -3,6 +3,7 @@ import Foundation
 
 // MARK: - App Screen Navigation
 enum AppScreen: Hashable {
+    case voicePick
     case fingerPick
     case gameSelection
     case yams
