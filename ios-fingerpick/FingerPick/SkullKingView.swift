@@ -381,6 +381,19 @@ struct SkullKingView: View {
                                     var updated = data
                                     updated.bet = betValue
                                     sheets[player.id]?.rounds[currentRound] = updated
+                                    
+                                    // Passer directement a la phase point des que tous les paris de la manche sont remplis
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                        let allPlaced = players.allSatisfy { p in
+                                            sheets[p.id]?.rounds[currentRound]?.bet != nil
+                                        }
+                                        if allPlaced {
+                                            hapticSuccess.notificationOccurred(.success)
+                                            withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                                                wizardPhase = .results
+                                            }
+                                        }
+                                    }
                                 } label: {
                                     Text("\(betValue)")
                                         .font(.system(size: 17, weight: .black, design: .rounded))
@@ -434,22 +447,51 @@ struct SkullKingView: View {
                         }
                     }
                     
-                    // Bonus Stepper / Quick Chips with Butin (+20)
+                    // Bonus Personnalisable : Steppers +/- & Presets tactiques (Butin +20, Pirate +30, Sirene +50)
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            Text("Bonus :")
+                            Text("Bonus personnalisé :")
                                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                                 .foregroundStyle(.white.opacity(0.65))
                             
-                            if data.bonus > 0 {
-                                Text("+\(data.bonus) pts")
-                                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.yellow)
+                            if data.bonus != 0 {
+                                Text("\(data.bonus > 0 ? "+\(data.bonus)" : "\(data.bonus)") pts")
+                                    .font(.system(size: 13, weight: .black, design: .rounded))
+                                    .foregroundStyle(data.bonus > 0 ? .yellow : .red)
                             }
                         }
                         
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
+                                // Steppers -10 et +10 pour personnalisation fine
+                                Button {
+                                    hapticImpact.impactOccurred()
+                                    var updated = data
+                                    updated.bonus = max(0, updated.bonus - 10)
+                                    sheets[player.id]?.rounds[currentRound] = updated
+                                } label: {
+                                    Text("-10")
+                                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                                        .foregroundStyle(.white.opacity(0.85))
+                                        .padding(.horizontal, 9)
+                                        .padding(.vertical, 6)
+                                        .background(Capsule().fill(Color.white.opacity(0.12)))
+                                }
+                                
+                                Button {
+                                    hapticImpact.impactOccurred()
+                                    var updated = data
+                                    updated.bonus += 10
+                                    sheets[player.id]?.rounds[currentRound] = updated
+                                } label: {
+                                    Text("+10")
+                                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                                        .foregroundStyle(.white.opacity(0.85))
+                                        .padding(.horizontal, 9)
+                                        .padding(.vertical, 6)
+                                        .background(Capsule().fill(Color.white.opacity(0.12)))
+                                }
+                                
                                 // Butin (+20) button
                                 Button {
                                     hapticImpact.impactOccurred()
@@ -468,23 +510,55 @@ struct SkullKingView: View {
                                     .background(Capsule().fill(Color.yellow))
                                 }
                                 
-                                ForEach([0, 10, 20, 30, 40, 50], id: \.self) { bonusPreset in
-                                    Button {
-                                        hapticImpact.impactOccurred()
-                                        var updated = data
-                                        updated.bonus = bonusPreset
-                                        sheets[player.id]?.rounds[currentRound] = updated
-                                    } label: {
-                                        Text(bonusPreset == 0 ? "0" : "+\(bonusPreset)")
+                                // Pirate capture (+30) button
+                                Button {
+                                    hapticImpact.impactOccurred()
+                                    var updated = data
+                                    updated.bonus += 30
+                                    sheets[player.id]?.rounds[currentRound] = updated
+                                } label: {
+                                    HStack(spacing: 3) {
+                                        Text("🏴‍☠️")
+                                        Text("+30 Pirate")
                                             .font(.system(size: 11, weight: .bold, design: .rounded))
-                                            .foregroundStyle(data.bonus == bonusPreset ? .black : .white.opacity(0.85))
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 6)
-                                            .background(
-                                                Capsule()
-                                                    .fill(data.bonus == bonusPreset ? Color.white.opacity(0.85) : Color.white.opacity(0.1))
-                                            )
                                     }
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 9)
+                                    .padding(.vertical, 6)
+                                    .background(Capsule().fill(Color.indigo))
+                                }
+                                
+                                // Sirene capture Skull King (+50) button
+                                Button {
+                                    hapticImpact.impactOccurred()
+                                    var updated = data
+                                    updated.bonus += 50
+                                    sheets[player.id]?.rounds[currentRound] = updated
+                                } label: {
+                                    HStack(spacing: 3) {
+                                        Text("🧜‍♀️")
+                                        Text("+50 Sirène")
+                                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                                    }
+                                    .foregroundStyle(.black)
+                                    .padding(.horizontal, 9)
+                                    .padding(.vertical, 6)
+                                    .background(Capsule().fill(Color.cyan))
+                                }
+                                
+                                // Remise a zero
+                                Button {
+                                    hapticImpact.impactOccurred()
+                                    var updated = data
+                                    updated.bonus = 0
+                                    sheets[player.id]?.rounds[currentRound] = updated
+                                } label: {
+                                    Text("0 pt")
+                                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                                        .foregroundStyle(.white.opacity(0.6))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 6)
+                                        .background(Capsule().fill(Color.white.opacity(0.08)))
                                 }
                             }
                         }
