@@ -1,151 +1,127 @@
-import SwiftUI
-import Speech
 import AVFoundation
 import Combine
+import Speech
 
 @MainActor
 final class SpeechRecognizerManager: ObservableObject {
-    @Published var isListening: Bool = false
-    @Published var authorizationStatus: SFSpeechRecognizerAuthorizationStatus = .notDetermined
-    @Published var lastRecognizedWord: String = ""
-    @Published var audioLevel: Float = 0.0
-    @Published var errorMessage: String? = nil
-    
+    @Published private(set) var isListening = false
+    @Published private(set) var lastRecognizedWord = ""
+    @Published private(set) var audioLevel: Float = 0
+    @Published private(set) var errorMessage: String?
+
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "fr-FR"))
-    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
-    private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
-    
-    // Words to ignore if spoken in phrases like "Moi c'est Lucas", "Je m'appelle Sarah"
+    private var request: SFSpeechAudioBufferRecognitionRequest?
+    private var recognitionTask: SFSpeechRecognitionTask?
+    private var sessionID: UUID?
+    private var tapInstalled = false
+    private var audioSessionActive = false
+    private var seenNames: Set<String> = []
+    private var lastWordCount = 0
+
     private let stopWords: Set<String> = [
-        "moi", "c'est", "cest", "je", "mappelle", "m'appelle", "appelle",
-        "suis", "le", "la", "et", "un", "une", "ici", "bonjour", "salut",
-        "joueur", "voici", "nom", "mon", "prenom", "prénom"
+        "moi", "c'est", "cest", "je", "mappelle", "m'appelle", "appelle", "suis",
+        "le", "la", "et", "un", "une", "ici", "bonjour", "salut", "joueur", "voici", "nom", "mon", "prenom", "prénom"
     ]
-    
-    init() {
-        checkAuthorization()
-    }
-    
-    func checkAuthorization() {
-        authorizationStatus = SFSpeechRecognizer.authorizationStatus()
-    }
-    
+
     func requestAuthorization() async -> Bool {
+        let status: SFSpeechRecognizerAuthorizationStatus = await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0) }
+        }
+        guard status == .authorized else { return false }
         return await withCheckedContinuation { continuation in
-            SFSpeechRecognizer.requestAuthorization { status in
-                Task { @MainActor in
-                    self.authorizationStatus = status
-                    if status == .authorized {
-                        AVAudioApplication.requestRecordPermission { granted in
-                            continuation.resume(returning: granted)
-                        }
-                    } else {
-                        continuation.resume(returning: false)
-                    }
-                }
-            }
+            AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) }
         }
     }
-    
-    func toggleListening(onNameDetected: @escaping (String) -> Void) {
-        if isListening {
-            stopListening()
-        } else {
-            startListening(onNameDetected: onNameDetected)
-        }
-    }
-    
-    func startListening(onNameDetected: @escaping (String) -> Void) {
+
+    func startListening(onNameDetected: @escaping @MainActor (String) -> Void) {
         guard !isListening else { return }
-        
-        // Reset state
         errorMessage = nil
         lastRecognizedWord = ""
-        
-        let audioSession = AVAudioSession.sharedInstance()
-        do {
-            try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.duckOthers, .defaultToSpeaker])
-            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
-        } catch {
-            errorMessage = "Erreur session audio: \(error.localizedDescription)"
+        guard let speechRecognizer, speechRecognizer.isAvailable, speechRecognizer.supportsOnDeviceRecognition else {
+            errorMessage = "La dictée locale est indisponible. Saisissez les prénoms au clavier."
             return
         }
-        
-        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-        guard let recognitionRequest = recognitionRequest else { return }
-        recognitionRequest.shouldReportPartialResults = true
-        
-        let inputNode = audioEngine.inputNode
-        
-        var recordedNamesSoFar = Set<String>()
-        var lastWordCount = 0
-        
-        recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
-            guard let self = self else { return }
-            
-            if let result = result {
-                let transcription = result.bestTranscription.formattedString
-                let words = transcription.split(separator: " ").map { String($0) }
-                
-                if words.count > lastWordCount, let lastWord = words.last {
-                    lastWordCount = words.count
-                    self.processWordCandidate(lastWord, seen: &recordedNamesSoFar, onDetected: onNameDetected)
-                }
-            }
-            
-            if error != nil || (result?.isFinal ?? false) {
-                // If audio finished or silent, keep ready
-            }
-        }
-        
-        let recordingFormat = inputNode.outputFormat(forBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
-            self?.recognitionRequest?.append(buffer)
-            
-            // Calculate approximate audio power level
-            if let channelData = buffer.floatChannelData?[0] {
-                let channelDataValue = channelData.pointee
-                let rms = sqrt(abs(channelDataValue))
-                Task { @MainActor in
-                    self?.audioLevel = min(1.0, max(0.1, rms * 4.0))
-                }
-            }
-        }
-        
+
         do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.record, mode: .measurement)
+            try audioSession.setActive(true)
+            audioSessionActive = true
+
+            let input = audioEngine.inputNode
+            let format = input.outputFormat(forBus: 0)
+            guard format.sampleRate > 0, format.channelCount > 0 else {
+                errorMessage = "Aucun microphone disponible. Saisissez les prénoms au clavier."
+                stopListening()
+                return
+            }
+
+            let id = UUID()
+            let request = SFSpeechAudioBufferRecognitionRequest()
+            request.requiresOnDeviceRecognition = true
+            request.shouldReportPartialResults = true
+            self.request = request
+            sessionID = id
+            seenNames.removeAll()
+            lastWordCount = 0
+
+            recognitionTask = speechRecognizer.recognitionTask(with: request) { @Sendable [weak self] result, error in
+                let transcription = result?.bestTranscription.formattedString
+                let finished = error != nil || result?.isFinal == true
+                Task { @MainActor in
+                    guard let self, self.sessionID == id else { return }
+                    if let transcription { self.process(transcription, onNameDetected: onNameDetected) }
+                    if finished { self.stopListening() }
+                }
+            }
+
+            input.installTap(onBus: 0, bufferSize: 1024, format: format) { @Sendable [weak self] buffer, _ in
+                request.append(buffer)
+                let sample = buffer.floatChannelData?[0].pointee ?? 0
+                let level = min(1, sqrt(abs(sample)) * 4)
+                Task { @MainActor in
+                    if self?.sessionID == id { self?.audioLevel = level }
+                }
+            }
+            tapInstalled = true
             audioEngine.prepare()
             try audioEngine.start()
             isListening = true
         } catch {
-            errorMessage = "Impossible de démarrer le micro: \(error.localizedDescription)"
             stopListening()
+            errorMessage = "Le microphone est indisponible. Saisissez les prénoms au clavier."
         }
     }
-    
-    private func processWordCandidate(_ word: String, seen: inout Set<String>, onDetected: (String) -> Void) {
-        let cleaned = word.trimmingCharacters(in: .punctuationCharacters).lowercased()
-        guard cleaned.count >= 2, !stopWords.contains(cleaned) else { return }
-        
-        // Capitalize first letter
-        let capitalized = cleaned.prefix(1).uppercased() + cleaned.dropFirst()
-        
-        if !seen.contains(capitalized.lowercased()) {
-            seen.insert(capitalized.lowercased())
-            lastRecognizedWord = capitalized
-            onDetected(capitalized)
+
+    private func process(_ transcription: String, onNameDetected: (String) -> Void) {
+        let words = transcription.split(separator: " ")
+        guard words.count > lastWordCount else { return }
+        for word in words.dropFirst(lastWordCount) {
+            let name = word.trimmingCharacters(in: .punctuationCharacters).lowercased()
+            guard name.count >= 2, !stopWords.contains(name), seenNames.insert(name).inserted else { continue }
+            lastRecognizedWord = name.prefix(1).uppercased() + name.dropFirst()
+            onNameDetected(lastRecognizedWord)
         }
+        lastWordCount = words.count
     }
-    
+
     func stopListening() {
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
-        recognitionRequest?.endAudio()
+        sessionID = nil
+        if tapInstalled {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
+        request?.endAudio()
         recognitionTask?.cancel()
-        
-        recognitionRequest = nil
+        request = nil
         recognitionTask = nil
         isListening = false
-        audioLevel = 0.0
+        audioLevel = 0
+        if audioSessionActive {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            audioSessionActive = false
+        }
     }
 }

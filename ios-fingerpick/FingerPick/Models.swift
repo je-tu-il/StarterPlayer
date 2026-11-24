@@ -3,10 +3,12 @@ import Foundation
 
 // MARK: - App Screen Navigation
 enum AppScreen: Hashable {
+    case drawHome
     case voicePick
     case fingerPick
     case gameSelection
     case yams
+    case yahtzee
     case skullKing
     case basicScoreSheet
 }
@@ -83,7 +85,7 @@ enum YamsSection: String, CaseIterable {
     case lower = "Section Inférieure"
 }
 
-enum YamsCategory: String, CaseIterable, Identifiable {
+enum YamsCategory: String, CaseIterable, Identifiable, Codable {
     case ones = "As (1)"
     case twos = "Deux (2)"
     case threes = "Trois (3)"
@@ -151,8 +153,9 @@ enum YamsCategory: String, CaseIterable, Identifiable {
     }
 }
 
-struct YamsPlayerSheet: Equatable {
+struct YamsPlayerSheet: Equatable, Codable {
     var scores: [YamsCategory: Int] = [:]
+    var extraYahtzees = 0
     
     var upperTotal: Int {
         let upperCategories: [YamsCategory] = [.ones, .twos, .threes, .fours, .fives, .sixes]
@@ -181,9 +184,11 @@ struct YamsPlayerSheet: Equatable {
     }
     
     var grandTotal: Int {
-        totalUpperWithBonus + lowerTotal
+        totalUpperWithBonus + lowerTotal + yahtzeeBonus
     }
     
+    var yahtzeeBonus: Int { scores[.yahtzee] == 50 ? extraYahtzees * 100 : 0 }
+
     var completedCount: Int {
         scores.count
     }
@@ -194,7 +199,7 @@ struct YamsPlayerSheet: Equatable {
 }
 
 // MARK: - Skull King Models
-struct SkullKingRoundData: Equatable {
+struct SkullKingRoundData: Equatable, Codable {
     var bet: Int? = nil       // Pari (de 0 à roundNumber)
     var tricks: Int? = nil    // Plis réalisés (de 0 à roundNumber)
     var bonus: Int = 0        // Points bonus (butin +20, cartes 14 +10/+20, pirates +30, sirènes...)
@@ -222,7 +227,7 @@ struct SkullKingRoundData: Equatable {
     }
 }
 
-struct SkullKingPlayerSheet: Equatable {
+struct SkullKingPlayerSheet: Equatable, Codable {
     // Manches (par défaut 10, mais ajustable à 8, 9 ou custom selon variantes et joueurs)
     var rounds: [Int: SkullKingRoundData] = [:]
     
@@ -246,8 +251,8 @@ struct SkullKingPlayerSheet: Equatable {
 }
 
 // MARK: - Basic Game Models
-struct BasicRound: Identifiable, Equatable {
-    let id: UUID = UUID()
+struct BasicRound: Identifiable, Equatable, Codable {
+    var id = UUID()
     var number: Int
     var scores: [UUID: Int] = [:] // Player ID -> score for this round
 }

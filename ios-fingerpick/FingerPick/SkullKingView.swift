@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import UIKit
 
@@ -5,6 +6,7 @@ struct SkullKingView: View {
     @Binding var currentScreen: AppScreen
     @Binding var players: [Player]
     
+    @AppStorage("fingerpick.skull.v1") private var savedMatch = Data()
     @State private var sheets: [UUID: SkullKingPlayerSheet] = [:]
     @State private var currentRound: Int = 1
     @State private var totalRounds: Int = 10
@@ -26,7 +28,7 @@ struct SkullKingView: View {
         case fullTable = "Tableau Complet"
     }
     
-    enum SkullKingPhase: String {
+    enum SkullKingPhase: String, Codable {
         case bets = "Paris (Annonces)"
         case results = "Résultats (Plis & Bonus)"
     }
@@ -137,7 +139,17 @@ struct SkullKingView: View {
                 SkullKingLeaderboardSheet(players: players, sheets: sheets)
             }
             .onAppear {
+                if let restored = try? JSONDecoder().decode(Snapshot.self, from: savedMatch) {
+                    sheets = restored.sheets
+                    totalRounds = min(10, max(7, restored.totalRounds))
+                    currentRound = min(totalRounds, max(1, restored.currentRound))
+                    krakenPlayedInRound = restored.kraken
+                    wizardPhase = restored.phase
+                }
                 initializeSheetsIfNeeded()
+            }
+            .onChange(of: snapshot) {
+                if let data = try? JSONEncoder().encode(snapshot) { savedMatch = data }
             }
         }
     }
@@ -680,6 +692,19 @@ struct SkullKingView: View {
     }
     
     // MARK: - Helpers
+    struct Snapshot: Codable, Equatable {
+        let sheets: [UUID: SkullKingPlayerSheet]
+        let currentRound: Int
+        let totalRounds: Int
+        let kraken: [Int: Bool]
+        let phase: SkullKingPhase
+    }
+
+    private var snapshot: Snapshot {
+        Snapshot(sheets: sheets, currentRound: currentRound, totalRounds: totalRounds,
+                 kraken: krakenPlayedInRound, phase: wizardPhase)
+    }
+
     private func initializeSheetsIfNeeded() {
         for player in players {
             if sheets[player.id] == nil {
@@ -689,9 +714,9 @@ struct SkullKingView: View {
     }
     
     private func resetGame() {
-        for player in players {
-            sheets[player.id] = SkullKingPlayerSheet()
-        }
+        sheets = Dictionary(uniqueKeysWithValues: players.map { ($0.id, SkullKingPlayerSheet()) })
+        krakenPlayedInRound.removeAll()
+        wizardPlayerIndex = 0
         currentRound = 1
         wizardPhase = .bets
     }

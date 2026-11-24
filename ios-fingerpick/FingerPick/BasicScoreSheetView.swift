@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import UIKit
 
@@ -5,10 +6,11 @@ struct BasicScoreSheetView: View {
     @Binding var currentScreen: AppScreen
     @Binding var players: [Player]
     
+    @AppStorage("fingerpick.free.rounds.v1") private var savedRounds = Data()
+    @AppStorage("fingerpick.free.lowestWins.v1") private var isLowestScoreWins = false
     @State private var rounds: [BasicRound] = []
     @State private var selectedCell: BasicCellItem? = nil
     @State private var scoreInputText: String = ""
-    @State private var isLowestScoreWins: Bool = false
     @State private var showingResetAlert: Bool = false
     @State private var showingLeaderboard: Bool = false
     
@@ -230,9 +232,15 @@ struct BasicScoreSheetView: View {
                 BasicLeaderboardSheet(players: players, rounds: rounds, lowestWins: isLowestScoreWins)
             }
             .onAppear {
+                if let restored = try? JSONDecoder().decode([BasicRound].self, from: savedRounds) {
+                    rounds = restored
+                }
                 if rounds.isEmpty {
                     addNewRound()
                 }
+            }
+            .onChange(of: rounds) {
+                if let data = try? JSONEncoder().encode(rounds) { savedRounds = data }
             }
         }
     }

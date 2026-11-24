@@ -4,22 +4,38 @@ on:
   push:
     branches: [ "main" ]
     tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-26
+    permissions:
+      contents: read
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🔨 Build app without signing
+      - name: Test on iPhone simulator
         run: |
-          PROJECT_PATH=$(find . -name "*.xcodeproj" | head -n 1)
-          SCHEME=$(xcodebuild -project "$PROJECT_PATH" -list -json | jq -r '.project.schemes[0]')
+          DEVICE_ID=$(xcrun simctl list devices available -j | jq -er '
+            .devices | to_entries | map(select(.key | contains("SimRuntime.iOS"))) |
+            reverse | map(.value[]) | map(select(.name | startswith("iPhone"))) | first | .udid')
+          xcodebuild test \
+            -project ios-fingerpick/FingerPick.xcodeproj \
+            -scheme FingerPick \
+            -destination "platform=iOS Simulator,id=$DEVICE_ID" \
+            -parallel-testing-enabled NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Build app without signing
+        run: |
+          PROJECT_PATH=ios-fingerpick/FingerPick.xcodeproj
+          SCHEME=FingerPick
           xcodebuild clean build \
             -project "$PROJECT_PATH" \
             -scheme "$SCHEME" \
@@ -42,29 +58,18 @@ jobs:
           name: fingerpick-unsigned
           path: fingerpick.ipa
 
-      - name: 🏷️ Determine Tag
-        id: vars
-        run: |
-          if [ "${{ github.ref_type }}" = "tag" ]; then
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=v1.0.0" >> $GITHUB_OUTPUT
-          fi
-
-      - name: 🚀 Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: fingerpick-unsigned
+      - name: Publish versioned IPA
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.vars.outputs.tag }}
-          name: "FingerPick StarterPlayer ${{ steps.vars.outputs.tag }}"
-          body: |
-            ## 🎲 FingerPick / StarterPlayer iOS Release
-
-            Binaire iOS non signé prêt pour l'installation directe par sideloading :
-            - 📱 **`fingerpick.ipa`** : Application complète pour iPhone & iPad (iOS 17+).
-            - 🛠️ Compatible avec **AltStore**, **SideStore**, **Sideloadly** ou **TrollStore**.
           files: fingerpick.ipa
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          body: "Archive iOS 18+ non signée. La distribution App Store requiert une archive signée."

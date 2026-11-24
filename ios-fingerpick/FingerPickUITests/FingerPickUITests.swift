@@ -23,12 +23,21 @@ final class FingerPickUITests: XCTestCase {
     }
 
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
+    func testOpenCatalogAndSearchForSkyjo() {
         let app = XCUIApplication()
         app.launch()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
+        XCTAssertTrue(app.navigationBars["Qui commence ?"].exists)
+        app.buttons["Bibliothèque de scores"].tap()
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("Skyjo")
+
+        let skyjo = app.buttons["Skyjo"].firstMatch
+        XCTAssertTrue(skyjo.waitForExistence(timeout: 5))
+        skyjo.tap()
+        XCTAssertTrue(app.navigationBars["Skyjo"].waitForExistence(timeout: 5))
     }
 
     @MainActor

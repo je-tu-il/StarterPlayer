@@ -1,6 +1,7 @@
 import Testing
 @testable import FingerPick
 
+@MainActor
 struct FingerPickTests {
 
     @Test func testYamsBonusThreshold() async throws {

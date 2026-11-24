@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import UIKit
 
@@ -5,6 +6,9 @@ struct YamsView: View {
     @Binding var currentScreen: AppScreen
     @Binding var players: [Player]
     
+    @AppStorage("fingerpick.yams.v1") private var savedYams = Data()
+    @AppStorage("fingerpick.yahtzee.v1") private var savedYahtzee = Data()
+    let usesYahtzeeBonus: Bool
     @State private var sheets: [UUID: YamsPlayerSheet] = [:]
     @State private var activePlayerIndex: Int = 0
     @State private var selectedCell: SelectedCellItem? = nil
@@ -18,6 +22,15 @@ struct YamsView: View {
     private let labelColWidth: CGFloat = 118
     private let playerColWidth: CGFloat = 78
     
+    struct Snapshot: Codable, Equatable {
+        let sheets: [UUID: YamsPlayerSheet]
+        let activePlayerID: UUID?
+    }
+
+    private var snapshot: Snapshot {
+        Snapshot(sheets: sheets, activePlayerID: players.indices.contains(activePlayerIndex) ? players[activePlayerIndex].id : nil)
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -72,6 +85,9 @@ struct YamsView: View {
                                 
                                 Divider().background(Color.white.opacity(0.2))
                                 
+                                if usesYahtzeeBonus {
+                                    yahtzeeBonusRow
+                                }
                                 // Grand Total Row
                                 grandTotalRow
                             }
@@ -80,7 +96,7 @@ struct YamsView: View {
                     }
                 }
             }
-            .navigationTitle("Feuille de Yams")
+            .navigationTitle(usesYahtzeeBonus ? "Yahtzee" : "Yam’s")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -140,7 +156,18 @@ struct YamsView: View {
                 YamsLeaderboardSheet(players: players, sheets: sheets)
             }
             .onAppear {
+                let data = usesYahtzeeBonus ? savedYahtzee : savedYams
+                if let restored = try? JSONDecoder().decode(Snapshot.self, from: data) {
+                    sheets = restored.sheets
+                    activePlayerIndex = players.firstIndex(where: { $0.id == restored.activePlayerID }) ?? 0
+                }
                 initializeSheetsIfNeeded()
+            }
+            .onChange(of: snapshot) {
+                if let data = try? JSONEncoder().encode(snapshot) {
+                    if usesYahtzeeBonus { savedYahtzee = data }
+                    else { savedYams = data }
+                }
             }
         }
     }
@@ -467,6 +494,40 @@ struct YamsView: View {
         sheets[newPlayer.id] = YamsPlayerSheet()
     }
     
+    private var yahtzeeBonusRow: some View {
+        HStack(spacing: 0) {
+            Text("Bonus Yahtzee")
+                .font(.caption)
+                .foregroundStyle(.white)
+                .frame(width: labelColWidth)
+            ForEach(players) { player in
+                let sheet = sheets[player.id] ?? YamsPlayerSheet()
+                VStack(spacing: 4) {
+                    Text("\(sheet.yahtzeeBonus)")
+                    HStack(spacing: 8) {
+                        Button {
+                            sheets[player.id]?.extraYahtzees -= 1
+                        } label: {
+                            Image(systemName: "minus.circle")
+                        }
+                        .disabled(sheet.extraYahtzees <= 0)
+                        .accessibilityLabel("Retirer un bonus à \(player.name)")
+                        Button {
+                            sheets[player.id]?.extraYahtzees += 1
+                        } label: {
+                            Image(systemName: "plus.circle")
+                        }
+                        .disabled(sheet.scores[.yahtzee] != 50 || sheet.extraYahtzees >= 12)
+                        .accessibilityLabel("Ajouter un bonus à \(player.name)")
+                    }
+                    .buttonStyle(.borderless)
+                }
+                .foregroundStyle(.cyan)
+                .frame(width: playerColWidth, height: 60)
+            }
+        }
+    }
+
     private func initializeSheetsIfNeeded() {
         for player in players {
             if sheets[player.id] == nil {
@@ -476,9 +537,7 @@ struct YamsView: View {
     }
     
     private func resetGame() {
-        for player in players {
-            sheets[player.id] = YamsPlayerSheet()
-        }
+        sheets = Dictionary(uniqueKeysWithValues: players.map { ($0.id, YamsPlayerSheet()) })
         activePlayerIndex = 0
     }
     
