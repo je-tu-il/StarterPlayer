@@ -135,7 +135,7 @@ struct DrawHomeView: View {
                 history = DrawHistory.read(savedHistory)
             }
             .fileExporter(isPresented: $exporting, document: exportBackup,
-                          contentType: .json, defaultFilename: "StarterPlayer-sauvegarde") { result in
+                          contentType: .json, defaultFilename: "FingerPick-sauvegarde") { result in
                 if case .failure(let error) = result { backupMessage = error.localizedDescription }
                 exportBackup = nil
             }
