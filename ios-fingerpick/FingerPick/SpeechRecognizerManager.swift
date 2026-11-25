@@ -17,7 +17,7 @@ final class SpeechRecognizerManager: ObservableObject {
     private var tapInstalled = false
     private var audioSessionActive = false
     private var seenNames: Set<String> = []
-    private var lastWordCount = 0
+    private var pendingNames: Task<Void, Never>?
 
     private let stopWords: Set<String> = [
         "moi", "c'est", "cest", "je", "mappelle", "m'appelle", "appelle", "suis",
@@ -64,15 +64,26 @@ final class SpeechRecognizerManager: ObservableObject {
             self.request = request
             sessionID = id
             seenNames.removeAll()
-            lastWordCount = 0
 
             recognitionTask = speechRecognizer.recognitionTask(with: request) { @Sendable [weak self] result, error in
                 let transcription = result?.bestTranscription.formattedString
-                let finished = error != nil || result?.isFinal == true
+                let isFinal = result?.isFinal == true
+                let failed = error != nil
                 Task { @MainActor in
                     guard let self, self.sessionID == id else { return }
-                    if let transcription { self.process(transcription, onNameDetected: onNameDetected) }
-                    if finished { self.stopListening() }
+                    self.pendingNames?.cancel()
+                    if let transcription {
+                        if isFinal {
+                            self.process(transcription, onNameDetected: onNameDetected)
+                        } else {
+                            self.pendingNames = Task { @MainActor [weak self] in
+                                try? await Task.sleep(for: .milliseconds(700))
+                                guard !Task.isCancelled, self?.sessionID == id else { return }
+                                self?.process(transcription, onNameDetected: onNameDetected)
+                            }
+                        }
+                    }
+                    if failed || isFinal { self.stopListening() }
                 }
             }
 
@@ -96,17 +107,17 @@ final class SpeechRecognizerManager: ObservableObject {
 
     private func process(_ transcription: String, onNameDetected: (String) -> Void) {
         let words = transcription.split(separator: " ")
-        guard words.count > lastWordCount else { return }
-        for word in words.dropFirst(lastWordCount) {
+        for word in words {
             let name = word.trimmingCharacters(in: .punctuationCharacters).lowercased()
             guard name.count >= 2, !stopWords.contains(name), seenNames.insert(name).inserted else { continue }
             lastRecognizedWord = name.prefix(1).uppercased() + name.dropFirst()
             onNameDetected(lastRecognizedWord)
         }
-        lastWordCount = words.count
     }
 
     func stopListening() {
+        pendingNames?.cancel()
+        pendingNames = nil
         sessionID = nil
         if tapInstalled {
             audioEngine.stop()

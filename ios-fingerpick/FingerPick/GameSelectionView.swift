@@ -5,6 +5,7 @@ struct GameSelectionView: View {
     @Binding var currentScreen: AppScreen
     @Binding var players: [Player]
     @State private var query = ""
+    @State private var newPlayer: Player?
 
     var body: some View {
         NavigationStack {
@@ -53,6 +54,14 @@ struct GameSelectionView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Tirage", systemImage: "chevron.left") { currentScreen = .drawHome }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Ajouter un joueur", systemImage: "person.badge.plus") {
+                        newPlayer = Player(name: "", colorHex: AppPalette.hex(at: players.count))
+                    }
+                }
+            }
+            .sheet(item: $newPlayer) { player in
+                PlayerEditSheet(player: player, onSave: { players.append($0) })
             }
         }
     }
@@ -103,15 +112,19 @@ struct GameSelectionView: View {
 
 struct PlayerEditSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("fingerpick.voiceNames.v1") private var recentNamesData = Data()
     @State var player: Player
     var onSave: (Player) -> Void
-    var onDelete: () -> Void
+    var onDelete: (() -> Void)? = nil
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("Nom") {
                     TextField("Prénom", text: $player.name)
+                    ForEach(Array(suggestions.prefix(5)), id: \.self) { suggestion in
+                        Button(suggestion) { player.name = suggestion }
+                    }
                 }
                 Section("Couleur") {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 44), spacing: 8)], spacing: 8) {
@@ -134,9 +147,11 @@ struct PlayerEditSheet: View {
                         }
                     }
                 }
-                Button("Supprimer ce joueur", role: .destructive) {
-                    onDelete()
-                    dismiss()
+                if let onDelete {
+                    Button("Supprimer ce joueur", role: .destructive) {
+                        onDelete()
+                        dismiss()
+                    }
                 }
             }
             .navigationTitle("Modifier le joueur")
@@ -148,6 +163,9 @@ struct PlayerEditSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Enregistrer") {
                         player.name = String(trimmedName.prefix(40))
+                        var names = recentNames.filter { $0.caseInsensitiveCompare(player.name) != .orderedSame }
+                        names.insert(player.name, at: 0)
+                        recentNamesData = (try? JSONEncoder().encode(Array(names.prefix(60)))) ?? recentNamesData
                         onSave(player)
                         dismiss()
                     }
@@ -158,4 +176,16 @@ struct PlayerEditSheet: View {
     }
 
     private var trimmedName: String { player.name.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    private var recentNames: [String] {
+        (try? JSONDecoder().decode([String].self, from: recentNamesData)) ?? []
+    }
+
+    private var suggestions: [String] {
+        guard !trimmedName.isEmpty else { return [] }
+        return recentNames.filter {
+            $0.caseInsensitiveCompare(trimmedName) != .orderedSame &&
+            $0.range(of: trimmedName, options: [.anchored, .caseInsensitive, .diacriticInsensitive]) != nil
+        }
+    }
 }

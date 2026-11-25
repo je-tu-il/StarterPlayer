@@ -104,7 +104,7 @@ struct FingerPickerView: View {
     }
 
     private func add(id: Int, at position: CGPoint, size: CGSize) {
-        guard winner == nil, markers.count < 24 else { return }
+        guard winner == nil else { return }
         let margin = min(24, size.width / 2, size.height / 2)
         let point = CGPoint(x: min(max(margin, position.x), size.width - margin),
                             y: min(max(margin, position.y), size.height - margin))

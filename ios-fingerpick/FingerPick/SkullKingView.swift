@@ -459,121 +459,10 @@ struct SkullKingView: View {
                         }
                     }
                     
-                    // Bonus Personnalisable : Steppers +/- & Presets tactiques (Butin +20, Pirate +30, Sirene +50)
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("Bonus personnalisé :")
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.65))
-                            
-                            if data.bonus != 0 {
-                                Text("\(data.bonus > 0 ? "+\(data.bonus)" : "\(data.bonus)") pts")
-                                    .font(.system(size: 13, weight: .black, design: .rounded))
-                                    .foregroundStyle(data.bonus > 0 ? .yellow : .red)
-                            }
-                        }
-                        
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                // Steppers -10 et +10 pour personnalisation fine
-                                Button {
-                                    hapticImpact.impactOccurred()
-                                    var updated = data
-                                    updated.bonus = max(0, updated.bonus - 10)
-                                    sheets[player.id]?.rounds[currentRound] = updated
-                                } label: {
-                                    Text("-10")
-                                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                                        .foregroundStyle(.white.opacity(0.85))
-                                        .padding(.horizontal, 9)
-                                        .padding(.vertical, 6)
-                                        .background(Capsule().fill(Color.white.opacity(0.12)))
-                                }
-                                
-                                Button {
-                                    hapticImpact.impactOccurred()
-                                    var updated = data
-                                    updated.bonus += 10
-                                    sheets[player.id]?.rounds[currentRound] = updated
-                                } label: {
-                                    Text("+10")
-                                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                                        .foregroundStyle(.white.opacity(0.85))
-                                        .padding(.horizontal, 9)
-                                        .padding(.vertical, 6)
-                                        .background(Capsule().fill(Color.white.opacity(0.12)))
-                                }
-                                
-                                // Butin (+20) button
-                                Button {
-                                    hapticImpact.impactOccurred()
-                                    var updated = data
-                                    updated.bonus += 20
-                                    sheets[player.id]?.rounds[currentRound] = updated
-                                } label: {
-                                    HStack(spacing: 3) {
-                                        Text("💰")
-                                        Text("+20 Butin")
-                                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    }
-                                    .foregroundStyle(.black)
-                                    .padding(.horizontal, 9)
-                                    .padding(.vertical, 6)
-                                    .background(Capsule().fill(Color.yellow))
-                                }
-                                
-                                // Pirate capture (+30) button
-                                Button {
-                                    hapticImpact.impactOccurred()
-                                    var updated = data
-                                    updated.bonus += 30
-                                    sheets[player.id]?.rounds[currentRound] = updated
-                                } label: {
-                                    HStack(spacing: 3) {
-                                        Text("🏴‍☠️")
-                                        Text("+30 Pirate")
-                                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    }
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 9)
-                                    .padding(.vertical, 6)
-                                    .background(Capsule().fill(Color.indigo))
-                                }
-                                
-                                // Sirene capture Skull King (+50) button
-                                Button {
-                                    hapticImpact.impactOccurred()
-                                    var updated = data
-                                    updated.bonus += 50
-                                    sheets[player.id]?.rounds[currentRound] = updated
-                                } label: {
-                                    HStack(spacing: 3) {
-                                        Text("🧜‍♀️")
-                                        Text("+50 Sirène")
-                                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    }
-                                    .foregroundStyle(.black)
-                                    .padding(.horizontal, 9)
-                                    .padding(.vertical, 6)
-                                    .background(Capsule().fill(Color.cyan))
-                                }
-                                
-                                // Remise a zero
-                                Button {
-                                    hapticImpact.impactOccurred()
-                                    var updated = data
-                                    updated.bonus = 0
-                                    sheets[player.id]?.rounds[currentRound] = updated
-                                } label: {
-                                    Text("0 pt")
-                                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                                        .foregroundStyle(.white.opacity(0.6))
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 6)
-                                        .background(Capsule().fill(Color.white.opacity(0.08)))
-                                }
-                            }
-                        }
+                    SkullKingBonusControl(value: data.bonus) { points in
+                        var updated = data
+                        updated.bonus = points
+                        sheets[player.id]?.rounds[currentRound] = updated
                     }
                 }
             }
@@ -811,47 +700,11 @@ struct SkullKingDetailModal: View {
                 }
                 .padding(.horizontal, 20)
                 
-                // Bonus Buttons
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Points Bonus :")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
-                    
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            Button {
-                                haptic.impactOccurred()
-                                data.bonus += 20
-                            } label: {
-                                HStack(spacing: 3) {
-                                    Text("💰")
-                                    Text("+20 Butin")
-                                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                                }
-                                .foregroundStyle(.black)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Capsule().fill(Color.yellow))
-                            }
-                            
-                            ForEach([0, 10, 20, 30, 40, 50], id: \.self) { b in
-                                Button {
-                                    haptic.impactOccurred()
-                                    data.bonus = b
-                                } label: {
-                                    Text("+\(b)")
-                                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                                        .foregroundStyle(data.bonus == b ? .black : .white)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
-                                        .background(Capsule().fill(data.bonus == b ? Color.yellow : Color.white.opacity(0.12)))
-                                }
-                            }
-                        }
-                    }
+                SkullKingBonusControl(value: data.bonus) { points in
+                    data.bonus = points
                 }
                 .padding(.horizontal, 20)
-                
+
                 // Preview Score
                 if let score = data.score(for: round) {
                     Text("Score de la manche : \(score >= 0 ? "+\(score)" : "\(score)") pts")
@@ -947,5 +800,20 @@ struct SkullKingLeaderboardSheet: View {
         case 2: return "🥉"
         default: return "\(index + 1)e"
         }
+    }
+}
+
+
+private struct SkullKingBonusControl: View {
+    let value: Int
+    let onChange: (Int) -> Void
+
+    var body: some View {
+        Stepper("Bonus : \(value > 0 ? "+\(value)" : String(value)) pts") {
+            onChange(value + 5)
+        } onDecrement: {
+            onChange(value - 5)
+        }
+        .font(.system(size: 13, weight: .semibold, design: .rounded))
     }
 }

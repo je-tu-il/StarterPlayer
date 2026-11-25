@@ -1,0 +1,23 @@
+# StarterPlayer — tâches issues du retour utilisateur
+
+## Joueurs et tirage
+- [x] Arrêter le microphone dès que le champ de saisie au clavier prend le focus.
+- [x] Retirer le plafond de 24 joueurs de la liste du tirage vocal.
+- [ ] Espacer et adapter les bulles à l’écran pour permettre la suppression du bon joueur, même avec un groupe nombreux.
+- [ ] Corriger les prénoms tronqués à la dictée, notamment « Gustave » reconnu comme « Gu ».
+- [ ] Rendre la roue plus fluide et faire correspondre son arrêt au joueur choisi.
+- [ ] Suggérer dès les premières lettres les noms déjà utilisés et les plus fréquents.
+- [ ] Charger un groupe de joueurs sauvegardé avant d’activer le micro.
+- [x] Préserver l’ordre d’inscription dans la liste lors d’un tirage vocal.
+- [ ] Vérifier que « Changer l’ordre » repart de l’ordre de table et permet le glisser-déposer.
+- [ ] Masquer les choix tirage vocal et mode doigt après le tirage, ou proposer un accueil qui conserve les joueurs et permet de relancer une partie.
+- [ ] Depuis la sélection du jeu, ouvrir directement l’édition d’un nouveau joueur et proposer l’autocomplétion.
+
+## Jeux et navigation
+- [ ] Corriger le sens de l’animation de retour d’une feuille de score vers la sélection des jeux.
+- [ ] Dans Skull King, remplacer les bonus prédéfinis par des réglages personnalisés par pas de ±5.
+- [ ] Identifier des jeux qui gagnent à avoir une feuille de score spécialisée et ajouter les feuilles retenues.
+- [ ] Affiner le design dans un esprit iOS, avec un usage discret du Liquid Glass.
+
+## Modifications à valider
+Suggestions de prénoms récents, sauvegarde d’un groupe, ajout direct depuis les scores, stabilisation des transcriptions et bonus Skull King ±5 dans les deux éditeurs implémentés. Valider sur iPhone.
