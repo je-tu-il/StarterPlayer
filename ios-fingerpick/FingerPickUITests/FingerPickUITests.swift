@@ -28,7 +28,9 @@ final class FingerPickUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.navigationBars["Qui commence ?"].exists)
-        app.buttons["Bibliothèque de scores"].tap()
+        let library = app.descendants(matching: .any)["draw.scoreLibrary"].firstMatch
+        XCTAssertTrue(library.waitForExistence(timeout: 10))
+        library.tap()
         let search = app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
