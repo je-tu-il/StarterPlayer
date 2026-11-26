@@ -17,7 +17,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: 📥 Checkout repository
+      - name: ?? Checkout repository
         uses: actions/checkout@v4
 
       - name: Test on iPhone simulator
@@ -46,30 +46,40 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: 📦 Package into IPA
+      - name: ?? Package into IPA
         run: |
           mkdir -p Payload
           cp -r build_output/Build/Products/Release-iphoneos/*.app Payload/
           zip -r fingerpick.ipa Payload
 
-      - name: 📤 Upload IPA Artifact
+      - name: ?? Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
           name: fingerpick-unsigned
           path: fingerpick.ipa
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && github.event_name != 'pull_request')
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+      - name: Read app version
+        id: version
+        shell: bash
+        run: |
+          version=$(sed -nE 's/^[[:space:]]*MARKETING_VERSION = ([0-9]+\.[0-9]+\.[0-9]+);/\1/p' ios-fingerpick/FingerPick.xcodeproj/project.pbxproj | head -n 1)
+          test -n "$version"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with:
           name: fingerpick-unsigned
       - name: Publish versioned IPA
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: fingerpick.ipa
-          body: "Archive iOS 18+ non signée. La distribution App Store requiert une archive signée."
+          body: "Archive iOS 18+ non sign�e. La distribution App Store requiert une archive sign�e."
