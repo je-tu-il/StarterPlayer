@@ -5,30 +5,30 @@ struct AtmosphericBackground: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(red: 0.02, green: 0.03, blue: 0.08),
-                    Color(red: 0.04, green: 0.08, blue: 0.16),
-                    Color(red: 0.01, green: 0.01, blue: 0.04)
+                    Color(red: 0.13, green: 0.15, blue: 0.14),
+                    Color(red: 0.19, green: 0.23, blue: 0.20),
+                    Color(red: 0.12, green: 0.14, blue: 0.13)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
 
             RadialGradient(
-                colors: [.cyan.opacity(0.20), .clear],
+                colors: [Color(red: 0.68, green: 0.78, blue: 0.85).opacity(0.15), .clear],
                 center: .topLeading,
                 startRadius: 30,
                 endRadius: 360
             )
             
             RadialGradient(
-                colors: [.purple.opacity(0.18), .clear],
+                colors: [Color(red: 0.81, green: 0.83, blue: 0.67).opacity(0.12), .clear],
                 center: .center,
                 startRadius: 20,
                 endRadius: 400
             )
 
             RadialGradient(
-                colors: [.orange.opacity(0.15), .clear],
+                colors: [Color(red: 0.93, green: 0.65, blue: 0.57).opacity(0.10), .clear],
                 center: .bottomTrailing,
                 startRadius: 40,
                 endRadius: 420
