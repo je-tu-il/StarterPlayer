@@ -21,7 +21,7 @@ final class SpeechRecognizerManager: ObservableObject {
 
     private let stopWords: Set<String> = [
         "moi", "c'est", "cest", "je", "mappelle", "m'appelle", "appelle", "suis",
-        "le", "la", "et", "un", "une", "ici", "bonjour", "salut", "joueur", "voici", "nom", "mon", "prenom", "prénom"
+        "le", "la", "et", "un", "une", "ici", "bonjour", "salut", "joueur", "voici", "nom", "mon", "prenom", "pr�nom"
     ]
 
     func requestAuthorization() async -> Bool {
@@ -34,12 +34,12 @@ final class SpeechRecognizerManager: ObservableObject {
         }
     }
 
-    func startListening(onNameDetected: @escaping @MainActor (String) -> Void) {
+    func startListening(contextualNames: [String], onNameDetected: @escaping @MainActor (String) -> Void) {
         guard !isListening else { return }
         errorMessage = nil
         lastRecognizedWord = ""
         guard let speechRecognizer, speechRecognizer.isAvailable, speechRecognizer.supportsOnDeviceRecognition else {
-            errorMessage = "La dictée locale est indisponible. Saisissez les prénoms au clavier."
+            errorMessage = "La dict�e locale est indisponible. Saisissez les pr�noms au clavier."
             return
         }
 
@@ -52,7 +52,7 @@ final class SpeechRecognizerManager: ObservableObject {
             let input = audioEngine.inputNode
             let format = input.outputFormat(forBus: 0)
             guard format.sampleRate > 0, format.channelCount > 0 else {
-                errorMessage = "Aucun microphone disponible. Saisissez les prénoms au clavier."
+                errorMessage = "Aucun microphone disponible. Saisissez les pr�noms au clavier."
                 stopListening()
                 return
             }
@@ -61,6 +61,7 @@ final class SpeechRecognizerManager: ObservableObject {
             let request = SFSpeechAudioBufferRecognitionRequest()
             request.requiresOnDeviceRecognition = true
             request.shouldReportPartialResults = true
+            request.contextualStrings = Array(contextualNames.prefix(60))
             self.request = request
             sessionID = id
             seenNames.removeAll()
@@ -77,7 +78,7 @@ final class SpeechRecognizerManager: ObservableObject {
                             self.process(transcription, onNameDetected: onNameDetected)
                         } else {
                             self.pendingNames = Task { @MainActor [weak self] in
-                                try? await Task.sleep(for: .milliseconds(700))
+                                try? await Task.sleep(for: .milliseconds(1050))
                                 guard !Task.isCancelled, self?.sessionID == id else { return }
                                 self?.process(transcription, onNameDetected: onNameDetected)
                             }
@@ -101,7 +102,7 @@ final class SpeechRecognizerManager: ObservableObject {
             isListening = true
         } catch {
             stopListening()
-            errorMessage = "Le microphone est indisponible. Saisissez les prénoms au clavier."
+            errorMessage = "Le microphone est indisponible. Saisissez les pr�noms au clavier."
         }
     }
 

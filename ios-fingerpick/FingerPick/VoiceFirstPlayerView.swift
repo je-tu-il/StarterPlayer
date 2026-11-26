@@ -20,7 +20,7 @@ struct VoiceFirstPlayerView: View {
         NavigationStack {
             List {
                 Section("Inscription") {
-                    Button(speech.isListening ? "Arrêter le microphone" : "Dicter les prénoms",
+                    Button(speech.isListening ? "Arr�ter le microphone" : "Dicter les pr�noms",
                            systemImage: speech.isListening ? "stop.circle" : "mic", action: microphone)
                         .disabled(requesting)
                     if speech.isListening {
@@ -30,7 +30,7 @@ struct VoiceFirstPlayerView: View {
                         Text(error).foregroundStyle(.secondary)
                     }
                     HStack {
-                        TextField("Prénom", text: $name)
+                        TextField("Pr�nom", text: $name)
                             .focused($isNameFieldFocused)
                             .submitLabel(.done)
                             .onSubmit(addManualName)
@@ -41,7 +41,7 @@ struct VoiceFirstPlayerView: View {
                 }
 
                 if isNameFieldFocused && !suggestions.isEmpty {
-                    Section("Prénoms récents") {
+                    Section("Pr�noms r�cents") {
                         ForEach(Array(suggestions.prefix(5)), id: \.self) { suggestion in
                             Button(suggestion) {
                                 name = suggestion
@@ -51,12 +51,12 @@ struct VoiceFirstPlayerView: View {
                     }
                 }
                 if roster.count >= 2 {
-                    Button("Mémoriser ce groupe", systemImage: "person.2") {
+                    Button("M�moriser ce groupe", systemImage: "person.2") {
                         savedGroupData = (try? JSONEncoder().encode(roster)) ?? savedGroupData
                     }
                 }
                 if roster.isEmpty && !savedGroupData.isEmpty {
-                    Button("Reprendre le groupe mémorisé", systemImage: "person.2.fill") {
+                    Button("Reprendre le groupe m�moris�", systemImage: "person.2.fill") {
                         roster = (try? JSONDecoder().decode([Player].self, from: savedGroupData)) ?? []
                     }
                 }
@@ -75,7 +75,7 @@ struct VoiceFirstPlayerView: View {
                     if let winner {
                         Text("Commence : \(winner.name)").font(.headline)
                     }
-                    Button("Bibliothèque de scores", systemImage: "list.clipboard") {
+                    Button("Biblioth�que de scores", systemImage: "list.clipboard") {
                         gamePlayers = roster
                         currentScreen = .gameSelection
                     }
@@ -92,10 +92,10 @@ struct VoiceFirstPlayerView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) { EditButton() }
             }
-            .alert("Accès au microphone", isPresented: $permissionAlert) {
+            .alert("Acc�s au microphone", isPresented: $permissionAlert) {
                 Button("OK", role: .cancel) {}
             } message: {
-                Text("Autorisez le microphone et la reconnaissance vocale dans Réglages ou ajoutez les joueurs au clavier.")
+                Text("Autorisez le microphone et la reconnaissance vocale dans R�glages ou ajoutez les joueurs au clavier.")
             }
             .onAppear { roster = gamePlayers }
             .onChange(of: roster) {
@@ -123,7 +123,7 @@ struct VoiceFirstPlayerView: View {
             defer { requesting = false }
             let granted = await speech.requestAuthorization()
             guard currentScreen == .voicePick, scenePhase == .active, !isNameFieldFocused else { return }
-            if granted { speech.startListening(onNameDetected: addPlayer) }
+            if granted { speech.startListening(contextualNames: recentNames, onNameDetected: addPlayer) }
             else { permissionAlert = true }
         }
     }

@@ -28,7 +28,7 @@ struct DrawHomeView: View {
             List {
                 Section {
                     Button { screen = .gameSelection } label: {
-                        Label("Bibliothèque de scores", systemImage: "list.clipboard")
+                        Label("Biblioth�que de scores", systemImage: "list.clipboard")
                     }
                     Button { screen = .fingerPick } label: {
                         Label("Tirage tactile", systemImage: "hand.tap")
@@ -53,9 +53,9 @@ struct DrawHomeView: View {
                     }
                     .onMove { players.move(fromOffsets: $0, toOffset: $1) }
                     .onDelete { players.remove(atOffsets: $0) }
-                    if players.count < 24 {
+                    if players.count < 52 {
                         HStack {
-                            TextField("Prénom", text: $rosterName)
+                            TextField("Pr�nom", text: $rosterName)
                                 .submitLabel(.done)
                                 .onSubmit(addPlayer)
                             Button("Ajouter", action: addPlayer)
@@ -70,7 +70,7 @@ struct DrawHomeView: View {
                         ForEach(DrawMode.selectable, id: \.self) { Text($0.rawValue).tag($0) }
                     }
                     if mode == .teams && players.count >= 2 {
-                        Stepper("Équipes : \(teamCount)", value: $teamCount, in: 2...min(8, players.count))
+                        Stepper("�quipes : \(teamCount)", value: $teamCount, in: 2...min(8, players.count))
                     }
                     Text(mode.instructions).font(.subheadline).foregroundStyle(.secondary)
                     if mode == .wheel && players.count >= 2 {
@@ -86,7 +86,7 @@ struct DrawHomeView: View {
                 }
 
                 if let result {
-                    Section("Résultat") {
+                    Section("R�sultat") {
                         ForEach(Array(result.lines.enumerated()), id: \.offset) { _, line in Text(line) }
                     }
                 }
@@ -112,10 +112,11 @@ struct DrawHomeView: View {
                                 }
                             }
                         }
-                        Button("Effacer l’historique", role: .destructive) { clearHistory = true }
+                        Button("Effacer l'historique", role: .destructive) { clearHistory = true }
                     }
                 }
             }
+            .disabled(spinning)
             .navigationTitle("Qui commence ?")
             .toolbar { if players.count > 1 { EditButton().disabled(spinning) } }
             .sheet(item: $editPlayer) { player in
@@ -125,7 +126,7 @@ struct DrawHomeView: View {
                     players.removeAll { $0.id == player.id }
                 }
             }
-            .confirmationDialog("Effacer l’historique des tirages ?", isPresented: $clearHistory) {
+            .confirmationDialog("Effacer l'historique des tirages ?", isPresented: $clearHistory) {
                 Button("Effacer", role: .destructive) {
                     history.removeAll()
                     savedHistory = Data()
@@ -144,10 +145,10 @@ struct DrawHomeView: View {
                     pendingBackup = try ScoreBackup(url: result.get())
                     confirmRestore = true
                 } catch {
-                    backupMessage = "Impossible d’ouvrir ce fichier de sauvegarde."
+                    backupMessage = "Impossible d'ouvrir ce fichier de sauvegarde."
                 }
             }
-            .confirmationDialog("Remplacer les joueurs, les scores et l’historique actuels ?",
+            .confirmationDialog("Remplacer les joueurs, les scores et l'historique actuels ?",
                                 isPresented: $confirmRestore, titleVisibility: .visible) {
                 Button("Restaurer", role: .destructive) {
                     pendingBackup?.restore()
@@ -175,7 +176,7 @@ struct DrawHomeView: View {
 
     private func addPlayer() {
         let name = rosterName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty, players.count < 24 else { return }
+        guard !name.isEmpty, players.count < 52 else { return }
         players.append(Player(name: String(name.prefix(40)), colorHex: AppPalette.hex(at: players.count)))
         rosterName = ""
     }
@@ -193,12 +194,12 @@ struct DrawHomeView: View {
         }
 
         let end = ceil(wheelAngle / 360) * 360 + 1080 - Double(index) * 360 / Double(players.count)
-        withAnimation(reduceMotion ? nil : .easeOut(duration: 1.25)) { wheelAngle = end }
+        withAnimation(reduceMotion ? nil : .timingCurve(0.12, 0.72, 0.19, 1, duration: 1.8)) { wheelAngle = end }
         if reduceMotion {
             result = record
         } else {
             spinning = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.25) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
                 spinning = false
                 if mode == .wheel && players.map(\.id) == record.roster { result = record }
             }
