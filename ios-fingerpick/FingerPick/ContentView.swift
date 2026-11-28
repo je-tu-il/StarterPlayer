@@ -4,7 +4,7 @@ import SwiftUI
 struct ContentView: View {
     @AppStorage("fingerpick.roster.v1") private var savedRoster = Data()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var currentScreen: AppScreen = .drawHome
+    @State private var currentScreen: AppScreen = .voicePick
     @State private var players: [Player] = []
 
     var body: some View {
